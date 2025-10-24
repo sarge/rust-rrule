@@ -81,10 +81,14 @@ pub(crate) fn datestring_to_date(
                 }
             }?
         } else {
-            // Use current system timezone
-            // TODO Add option to always use UTC when this is executed on a server.
-            let local = Tz::LOCAL;
-            match local.from_local_datetime(&datetime) {
+
+            #[cfg(not(feature = "force-utc"))]
+            let time = Tz::LOCAL;
+
+            #[cfg(feature = "force-utc")]
+            let time = Tz::UTC;
+
+            match time.from_local_datetime(&datetime) {
                 LocalResult::None => {
                     return Err(ParseError::InvalidDateTimeInLocalTimezone {
                         value: dt.into(),

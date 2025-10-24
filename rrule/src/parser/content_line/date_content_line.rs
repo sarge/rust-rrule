@@ -88,6 +88,7 @@ impl TryFrom<ContentLineCaptures<'_>> for Vec<chrono::DateTime<Tz>> {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "force-utc"))]
 mod tests {
     use chrono::TimeZone;
 
@@ -129,6 +130,38 @@ mod tests {
                     UTC.with_ymd_and_hms(1997, 4, 21, 0, 0, 0).unwrap(),
                 ],
             ),
+        ];
+
+        for (input, expected_output) in tests {
+            let output = TryFrom::try_from(input);
+            assert_eq!(output, Ok(expected_output));
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "force-utc")]
+mod tests {
+    use chrono::TimeZone;
+
+    use crate::{core::Tz, parser::content_line::PropertyName};
+
+    use super::*;
+
+    const UTC: Tz = Tz::UTC;
+
+    #[test]
+    fn parses_date_content_line() {
+        let tests = [
+            (
+                ContentLineCaptures {
+                    property_name: PropertyName::RDate,
+                    parameters: None,
+                    value: "19970714T123000",
+                },
+                vec![Tz::UTC.with_ymd_and_hms(1997, 7, 14, 12, 30, 0).unwrap()],
+            ),
+            
         ];
 
         for (input, expected_output) in tests {
