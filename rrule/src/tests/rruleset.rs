@@ -1,7 +1,6 @@
 use crate::tests::common::{check_occurrences, test_recurring_rrule_set, ymd_hms};
 use crate::{Frequency, NWeekday, RRule, RRuleSet, Weekday};
 
-
 #[test]
 #[cfg(feature = "force-utc")]
 fn rrule_and_utc_time() {
@@ -13,10 +12,7 @@ fn rrule_and_utc_time() {
         .dates;
     check_occurrences(
         &dates,
-        &[
-            "2020-12-14T00:00:00+00:00",
-            "2020-12-15T00:00:00+00:00",
-        ],
+        &["2020-12-14T00:00:00+00:00", "2020-12-15T00:00:00+00:00"],
     );
 }
 

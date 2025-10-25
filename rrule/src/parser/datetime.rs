@@ -81,7 +81,6 @@ pub(crate) fn datestring_to_date(
                 }
             }?
         } else {
-
             #[cfg(not(feature = "force-utc"))]
             let time = Tz::LOCAL;
 

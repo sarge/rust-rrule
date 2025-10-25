@@ -152,17 +152,14 @@ mod tests {
 
     #[test]
     fn parses_date_content_line() {
-        let tests = [
-            (
-                ContentLineCaptures {
-                    property_name: PropertyName::RDate,
-                    parameters: None,
-                    value: "19970714T123000",
-                },
-                vec![Tz::UTC.with_ymd_and_hms(1997, 7, 14, 12, 30, 0).unwrap()],
-            ),
-            
-        ];
+        let tests = [(
+            ContentLineCaptures {
+                property_name: PropertyName::RDate,
+                parameters: None,
+                value: "19970714T123000",
+            },
+            vec![Tz::UTC.with_ymd_and_hms(1997, 7, 14, 12, 30, 0).unwrap()],
+        )];
 
         for (input, expected_output) in tests {
             let output = TryFrom::try_from(input);
