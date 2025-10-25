@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (20245-10-26)
+
+- Add support for forcing Local times to UTC
+- Add support for closer Google compliance by include `dtstart` even if the `dtstart` does not align with the rrule.
+
 ## 0.14.0 (2025-04-20)
 
 - MSRV is bumped to `1.81.0` from `v1.74.0`
