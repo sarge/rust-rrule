@@ -274,6 +274,10 @@ pub struct RRule<Stage = Validated> {
     /// Can be a value from -366 to 366.
     /// Note: Only used when `by-easter` feature flag is set. Otherwise, it is ignored.
     pub(crate) by_easter: Option<i16>,
+    /// Extension for RFC-5545 compliance.
+    /// Controls whether DTSTART should be included as the first occurrence.
+    /// Controlled via the X-INCLUDE-DTSTART parameter.
+    pub(crate) include_dtstart: Option<bool>,
     /// A phantom data to have the stage (unvalidated or validated).
     #[cfg_attr(feature = "serde", serde_as(as = "ignore"))]
     pub(crate) stage: PhantomData<Stage>,
@@ -299,6 +303,7 @@ impl Default for RRule<Unvalidated> {
             by_minute: Vec::new(),
             by_second: Vec::new(),
             by_easter: None,
+            include_dtstart: None,
             stage: PhantomData,
         }
     }
@@ -439,6 +444,15 @@ impl RRule<Unvalidated> {
     #[must_use]
     pub fn by_easter(mut self, by_easter: i16) -> Self {
         self.by_easter = Some(by_easter);
+        self
+    }
+
+    /// Sets whether DTSTART should be included as the first occurrence.
+    /// When enabled, DTSTART will always be included regardless of whether it matches the recurrence pattern.
+    /// This follows Google Calendar behavior for RFC-5545 compliance.
+    #[must_use]
+    pub fn include_dtstart(mut self, include: bool) -> Self {
+        self.include_dtstart = Some(include);
         self
     }
 
@@ -595,6 +609,7 @@ impl RRule<Unvalidated> {
             by_minute: rrule.by_minute,
             by_second: rrule.by_second,
             by_easter: rrule.by_easter,
+            include_dtstart: rrule.include_dtstart,
             stage: PhantomData,
         })
     }
@@ -764,6 +779,13 @@ impl<S> Display for RRule<S> {
             res.push(format!("BYEASTER={}", by_easter));
         }
 
+        if let Some(include_dtstart) = &self.include_dtstart {
+            res.push(format!(
+                "X-INCLUDE-DTSTART={}",
+                if *include_dtstart { "TRUE" } else { "FALSE" }
+            ));
+        }
+
         write!(f, "{}", res.join(";"))
     }
 }
@@ -858,5 +880,11 @@ impl<S> RRule<S> {
     #[must_use]
     pub fn get_by_easter(&self) -> Option<&i16> {
         self.by_easter.as_ref()
+    }
+
+    /// Get whether DTSTART should be included as the first occurrence.
+    #[must_use]
+    pub fn get_include_dtstart(&self) -> Option<&bool> {
+        self.include_dtstart.as_ref()
     }
 }

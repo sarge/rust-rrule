@@ -37,7 +37,7 @@ impl RRuleIter {
         let timeset = ii.get_timeset(hour, minute, second);
         let count = ii.rrule().count;
 
-        Self {
+        let mut new_iter = Self {
             counter_date: dt_start.into(),
             ii,
             timeset,
@@ -47,7 +47,15 @@ impl RRuleIter {
             count,
             limited,
             was_limited: false,
+        };
+
+        // If X-INCLUDE-DTSTART=TRUE, force include DTSTART at the beginning
+        // This ensures DTSTART is always first, regardless of recurrence pattern
+        if rrule.include_dtstart == Some(true) {
+            new_iter.buffer.push_back(*dt_start);
         }
+
+        new_iter
     }
 
     /// Attempts to add a date to the result. Returns `true` if we should
@@ -66,6 +74,13 @@ impl RRuleIter {
         }
 
         if dt >= *dt_start {
+            // Special handling for DTSTART when X-INCLUDE-DTSTART=TRUE
+            if dt == *dt_start && rrule.include_dtstart == Some(true) {
+                // DTSTART was already force-included in constructor, skip natural occurrence
+                // but don't count it against COUNT since it was already added
+                return false;
+            }
+
             buffer.push_back(dt);
 
             if let Some(count) = count {
