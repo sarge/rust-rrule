@@ -38,7 +38,7 @@ mod rfc5545_dtstart_tests {
             &dates,
             &[
                 "2023-01-03T10:00:00+00:00", // First Tuesday
-                "2023-01-10T10:00:00+00:00", // Second Tuesday  
+                "2023-01-10T10:00:00+00:00", // Second Tuesday
                 "2023-01-17T10:00:00+00:00", // Third Tuesday
             ],
         );
