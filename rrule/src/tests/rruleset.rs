@@ -2,6 +2,21 @@ use crate::tests::common::{check_occurrences, test_recurring_rrule_set, ymd_hms}
 use crate::{Frequency, NWeekday, RRule, RRuleSet, Weekday};
 
 #[test]
+#[cfg(feature = "force-utc")]
+fn rrule_and_utc_time() {
+    let dates = "DTSTART;VALUE=DATE:20201214\n\
+        RRULE:FREQ=DAILY;COUNT=2;"
+        .parse::<RRuleSet>()
+        .unwrap()
+        .all(u16::MAX)
+        .dates;
+    check_occurrences(
+        &dates,
+        &["2020-12-14T00:00:00+00:00", "2020-12-15T00:00:00+00:00"],
+    );
+}
+
+#[test]
 #[cfg(feature = "exrule")]
 fn rrule_and_exrule() {
     let dt_start = ymd_hms(1997, 9, 2, 9, 0, 0);

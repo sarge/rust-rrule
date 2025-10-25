@@ -35,6 +35,9 @@ default = []
 # Allows the enabling of the `by_easter` field and `BYEASTER` parser.
 by-easter = []
 
+# Forces Date only or floating DateTimes to be UTC
+force-utc = []
+
 # Required only for building CLI `rrule` tool.
 cli-tool = ["clap"]
 

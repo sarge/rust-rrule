@@ -26,6 +26,10 @@ pub enum ParseError {
     InvalidWeekdayStart(String),
     #[error("`{0}` is not a valid BYEASTER value.")]
     InvalidByEaster(String),
+    #[error(
+        "`{0}` is not a valid X-INCLUDE-DTSTART value. Expected TRUE, FALSE, YES, NO, 1, or 0."
+    )]
+    InvalidXIncludeDtstart(String),
     #[error("`{0}` is not a valid INTERVAL value.")]
     InvalidInterval(String),
     #[error("`{0}` is not a valid COUNT value.")]

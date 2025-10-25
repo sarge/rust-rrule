@@ -33,6 +33,7 @@ pub enum RRuleProperty {
     Wkst,
     #[cfg(feature = "by-easter")]
     ByEaster,
+    XIncludeDtstart,
 }
 
 impl FromStr for RRuleProperty {
@@ -56,6 +57,7 @@ impl FromStr for RRuleProperty {
             "WKST" => Self::Wkst,
             #[cfg(feature = "by-easter")]
             "BYEASTER" => Self::ByEaster,
+            "X-INCLUDE-DTSTART" => Self::XIncludeDtstart,
             _ => return Err(ParseError::UnrecognizedParameter(s.into())),
         };
         Ok(prop)
@@ -200,6 +202,17 @@ fn props_to_rrule(
         })
         .transpose()?;
 
+    let include_dtstart = props
+        .get(&RRuleProperty::XIncludeDtstart)
+        .map(
+            |include_str: &String| match include_str.to_uppercase().as_str() {
+                "TRUE" | "1" | "YES" => Ok(true),
+                "FALSE" | "0" | "NO" => Ok(false),
+                _ => Err(ParseError::InvalidXIncludeDtstart(include_str.clone())),
+            },
+        )
+        .transpose()?;
+
     // Check if mandatory fields are set
     Ok(RRule {
         freq,
@@ -218,6 +231,7 @@ fn props_to_rrule(
         by_minute,
         by_second,
         by_easter,
+        include_dtstart,
         stage: PhantomData,
     })
 }
