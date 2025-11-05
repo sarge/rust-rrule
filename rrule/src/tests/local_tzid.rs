@@ -54,7 +54,7 @@ mod local_tzid_integration_tests {
     fn local_tzid_with_date_values() {
         // Test that LOCAL-TZID with DATE values (all-day events) works correctly
         // DATE values should always be at 00:00:00 in the LOCAL-TZID timezone
-        
+
         let rrule_with_date_utc = "DTSTART;VALUE=DATE:20201214\n\
             RRULE:FREQ=DAILY;LOCAL-TZID=UTC;COUNT=2";
 
@@ -62,7 +62,7 @@ mod local_tzid_integration_tests {
         let dates = rrule_set.all(u16::MAX).dates;
 
         assert_eq!(dates.len(), 2);
-        
+
         // All dates should be at 00:00:00 in UTC timezone
         for date in &dates {
             assert_eq!(date.timezone(), Tz::UTC);
@@ -79,7 +79,7 @@ mod local_tzid_integration_tests {
         let dates_ny = rrule_set_ny.all(u16::MAX).dates;
 
         assert_eq!(dates_ny.len(), 2);
-        
+
         // All dates should be at 00:00:00 in America/New_York timezone
         for date in &dates_ny {
             assert_eq!(date.timezone(), Tz::America__New_York);
