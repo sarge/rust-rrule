@@ -1,7 +1,7 @@
 [package]
 name = "rrule"
 description = "A pure Rust implementation of recurrence rules as defined in the iCalendar RFC."
-version = "0.15.0"
+version = "0.16.0"
 documentation = "https://docs.rs/rrule"
 repository = "https://github.com/fmeringdal/rust-rrule"
 authors = ["Fredrik Meringdal", "Ralph Bisschops <ralph.bisschops.dev@gmail.com>"]
@@ -34,9 +34,6 @@ default = []
 
 # Allows the enabling of the `by_easter` field and `BYEASTER` parser.
 by-easter = []
-
-# Forces Date only or floating DateTimes to be UTC
-force-utc = []
 
 # Required only for building CLI `rrule` tool.
 cli-tool = ["clap"]

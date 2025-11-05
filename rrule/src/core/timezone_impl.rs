@@ -12,6 +12,8 @@ impl PartialEq for Tz {
     }
 }
 
+impl Eq for Tz {}
+
 impl From<Local> for Tz {
     fn from(tz: Local) -> Self {
         Self::Local(tz)

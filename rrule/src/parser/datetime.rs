@@ -19,6 +19,19 @@ pub(crate) fn datestring_to_date(
     tz: Option<Tz>,
     property: &str,
 ) -> Result<chrono::DateTime<Tz>, ParseError> {
+    datestring_to_date_with_local_tzid(dt, tz, property, None)
+}
+
+/// Convert a datetime string and a timezone to a `chrono::DateTime<Tz>`.
+/// If the string specifies a zulu timezone with `Z`, then the timezone
+/// argument will be ignored. If no timezone is specified and local_tzid is Some,
+/// it will be used instead of the local timezone.
+pub(crate) fn datestring_to_date_with_local_tzid(
+    dt: &str,
+    tz: Option<Tz>,
+    property: &str,
+    local_tzid: Option<Tz>,
+) -> Result<chrono::DateTime<Tz>, ParseError> {
     let ParsedDateString {
         year,
         month,
@@ -81,11 +94,7 @@ pub(crate) fn datestring_to_date(
                 }
             }?
         } else {
-            #[cfg(not(feature = "force-utc"))]
-            let time = Tz::LOCAL;
-
-            #[cfg(feature = "force-utc")]
-            let time = Tz::UTC;
+            let time = local_tzid.unwrap_or(Tz::LOCAL);
 
             match time.from_local_datetime(&datetime) {
                 LocalResult::None => {

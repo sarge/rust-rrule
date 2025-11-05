@@ -52,7 +52,17 @@ impl RRuleIter {
         // If X-INCLUDE-DTSTART=TRUE, force include DTSTART at the beginning
         // This ensures DTSTART is always first, regardless of recurrence pattern
         if rrule.include_dtstart == Some(true) {
-            new_iter.buffer.push_back(*dt_start);
+            let output_dt_start = if let Some(local_tzid) = rrule.local_tzid {
+                // Apply LOCAL-TZID to DTSTART if it's a floating datetime
+                if dt_start.timezone() != Tz::UTC && Self::should_apply_local_tzid(*dt_start, dt_start) {
+                    dt_start.with_timezone(&local_tzid)
+                } else {
+                    *dt_start
+                }
+            } else {
+                *dt_start
+            };
+            new_iter.buffer.push_back(output_dt_start);
         }
 
         new_iter
@@ -81,7 +91,21 @@ impl RRuleIter {
                 return false;
             }
 
-            buffer.push_back(dt);
+            // Apply LOCAL-TZID conversion to output dates when appropriate
+            let output_dt = if let Some(local_tzid) = rrule.local_tzid {
+                // Only apply LOCAL-TZID if the date is in a "local-like" timezone
+                // (not explicitly UTC and not explicitly set to another specific timezone)
+                // This applies LOCAL-TZID to floating datetimes and generated recurrences
+                if dt.timezone() != Tz::UTC && Self::should_apply_local_tzid(dt, dt_start) {
+                    dt.with_timezone(&local_tzid)
+                } else {
+                    dt
+                }
+            } else {
+                dt
+            };
+
+            buffer.push_back(output_dt);
 
             if let Some(count) = count {
                 *count -= 1;
@@ -210,6 +234,17 @@ impl RRuleIter {
 
         // Indicate that there might be more items on the next iteration.
         false
+    }
+
+    /// Determine if LOCAL-TZID should be applied to this datetime.
+    /// LOCAL-TZID should only affect floating datetimes (those originally parsed without explicit timezone).
+    /// Heuristic: Apply LOCAL-TZID if the datetime is in the same timezone as DTSTART AND
+    /// DTSTART appears to be a floating datetime (Local timezone, not UTC or other specific timezone).
+    fn should_apply_local_tzid(dt: chrono::DateTime<Tz>, dt_start: &chrono::DateTime<Tz>) -> bool {
+        // Apply LOCAL-TZID only if:
+        // 1. The datetime is in the same timezone as DTSTART (indicating it's a generated recurrence)
+        // 2. AND DTSTART appears to be floating (Local timezone, not UTC or named timezone)
+        dt.timezone() == dt_start.timezone() && matches!(dt_start.timezone(), Tz::Local(_))
     }
 }
 

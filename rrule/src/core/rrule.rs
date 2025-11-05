@@ -278,6 +278,10 @@ pub struct RRule<Stage = Validated> {
     /// Controls whether DTSTART should be included as the first occurrence.
     /// Controlled via the X-INCLUDE-DTSTART parameter.
     pub(crate) include_dtstart: Option<bool>,
+    /// Extension to replace force-utc feature.
+    /// When specified, floating datetimes will be interpreted in this timezone
+    /// instead of the local timezone. Controlled via the LOCAL-TZID parameter.
+    pub(crate) local_tzid: Option<Tz>,
     /// A phantom data to have the stage (unvalidated or validated).
     #[cfg_attr(feature = "serde", serde_as(as = "ignore"))]
     pub(crate) stage: PhantomData<Stage>,
@@ -304,6 +308,7 @@ impl Default for RRule<Unvalidated> {
             by_second: Vec::new(),
             by_easter: None,
             include_dtstart: None,
+            local_tzid: None,
             stage: PhantomData,
         }
     }
@@ -610,6 +615,7 @@ impl RRule<Unvalidated> {
             by_second: rrule.by_second,
             by_easter: rrule.by_easter,
             include_dtstart: rrule.include_dtstart,
+            local_tzid: rrule.local_tzid,
             stage: PhantomData,
         })
     }
@@ -784,6 +790,10 @@ impl<S> Display for RRule<S> {
                 "X-INCLUDE-DTSTART={}",
                 if *include_dtstart { "TRUE" } else { "FALSE" }
             ));
+        }
+
+        if let Some(local_tzid) = &self.local_tzid {
+            res.push(format!("LOCAL-TZID={}", local_tzid));
         }
 
         write!(f, "{}", res.join(";"))

@@ -4,11 +4,8 @@ use chrono::Weekday;
 
 use crate::{
     parser::{
-        content_line::parameters::parse_parameters,
-        datetime::{datestring_to_date, parse_weekdays},
-        str_to_weekday,
-        utils::parse_str_to_vec,
-        ParseError,
+        content_line::parameters::parse_parameters, datetime::parse_weekdays, str_to_weekday,
+        utils::parse_str_to_vec, ParseError,
     },
     Frequency, RRule, Unvalidated,
 };
@@ -34,6 +31,7 @@ pub enum RRuleProperty {
     #[cfg(feature = "by-easter")]
     ByEaster,
     XIncludeDtstart,
+    LocalTzid,
 }
 
 impl FromStr for RRuleProperty {
@@ -58,6 +56,7 @@ impl FromStr for RRuleProperty {
             #[cfg(feature = "by-easter")]
             "BYEASTER" => Self::ByEaster,
             "X-INCLUDE-DTSTART" => Self::XIncludeDtstart,
+            "LOCAL-TZID" => Self::LocalTzid,
             _ => return Err(ParseError::UnrecognizedParameter(s.into())),
         };
         Ok(prop)
@@ -109,9 +108,22 @@ fn props_to_rrule(
                 .map_err(|_| ParseError::InvalidCount(count.into()))
         })
         .transpose()?;
+
+    // Parse LOCAL-TZID first as it may be needed for other datetime parsing
+    let local_tzid = props
+        .get(&RRuleProperty::LocalTzid)
+        .map(|tzid_str: &String| {
+            use crate::parser::datetime::parse_timezone;
+            parse_timezone(tzid_str)
+        })
+        .transpose()?;
+
     let until = props
         .get(&RRuleProperty::Until)
-        .map(|until| datestring_to_date(until, None, "UNTIL"))
+        .map(|until| {
+            use crate::parser::datetime::datestring_to_date_with_local_tzid;
+            datestring_to_date_with_local_tzid(until, None, "UNTIL", local_tzid)
+        })
         .transpose()?;
     let week_start = props
         .get(&RRuleProperty::Wkst)
@@ -232,6 +244,7 @@ fn props_to_rrule(
         by_second,
         by_easter,
         include_dtstart,
+        local_tzid,
         stage: PhantomData,
     })
 }
@@ -286,6 +299,90 @@ mod tests {
         for (input, expected_output) in tests {
             let output = RRule::try_from(input);
             assert_eq!(output, Ok(expected_output));
+        }
+    }
+
+    #[test]
+    fn parses_local_tzid_parameter() {
+        let tests = [
+            (
+                ContentLineCaptures {
+                    property_name: PropertyName::RRule,
+                    parameters: None,
+                    value: "FREQ=DAILY;LOCAL-TZID=America/New_York",
+                },
+                RRule {
+                    freq: Frequency::Daily,
+                    local_tzid: Some(crate::Tz::America__New_York),
+                    ..Default::default()
+                },
+            ),
+            (
+                ContentLineCaptures {
+                    property_name: PropertyName::RRule,
+                    parameters: None,
+                    value: "FREQ=WEEKLY;LOCAL-TZID=UTC",
+                },
+                RRule {
+                    freq: Frequency::Weekly,
+                    local_tzid: Some(crate::Tz::UTC),
+                    ..Default::default()
+                },
+            ),
+        ];
+
+        for (input, expected_output) in tests {
+            let output = RRule::try_from(input);
+            assert_eq!(output, Ok(expected_output));
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_local_tzid() {
+        let tests = [(
+            ContentLineCaptures {
+                property_name: PropertyName::RRule,
+                parameters: None,
+                value: "FREQ=DAILY;LOCAL-TZID=Invalid/Timezone",
+            },
+            ParseError::InvalidTimezone("Invalid/Timezone".into()),
+        )];
+
+        for (input, expected_output) in tests {
+            let output = RRule::try_from(input);
+            assert_eq!(output, Err(expected_output));
+        }
+    }
+
+    #[test]
+    fn local_tzid_affects_until_parsing() {
+        use crate::Tz;
+
+        // Test that LOCAL-TZID affects UNTIL datetime parsing
+        let tests = [
+            (
+                // Without LOCAL-TZID, floating datetime uses local time
+                "FREQ=DAILY;UNTIL=19970904T090000",
+                None, // no local_tzid
+            ),
+            (
+                // With LOCAL-TZID, floating datetime uses specified timezone
+                "FREQ=DAILY;LOCAL-TZID=America/New_York;UNTIL=19970904T090000",
+                Some(Tz::America__New_York),
+            ),
+        ];
+
+        for (input_str, expected_local_tzid) in tests {
+            let input = ContentLineCaptures {
+                property_name: PropertyName::RRule,
+                parameters: None,
+                value: input_str,
+            };
+            let output = RRule::try_from(input).unwrap();
+            assert_eq!(output.local_tzid, expected_local_tzid);
+
+            // Verify UNTIL was parsed (would fail if LOCAL-TZID caused parsing error)
+            assert!(output.until.is_some());
         }
     }
 

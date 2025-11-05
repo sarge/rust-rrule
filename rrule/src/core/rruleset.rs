@@ -397,7 +397,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "force-utc"))]
     fn respect_local_timezone_in_exdates_rdates() {
         let rruleset_str = "DTSTART:20120201T093000Z\nRRULE:FREQ=DAILY;COUNT=3;BYHOUR=9;BYMINUTE=30;BYSECOND=0\nRDATE;VALUE=DATE-TIME:19970101T000000,19970120T000000\nEXRULE:FREQ=YEARLY;COUNT=8;BYMONTH=6,7;BYMONTHDAY=1;BYHOUR=9;BYMINUTE=30;BYSECOND=0\nEXDATE;VALUE=DATE-TIME:19970121T000000";
         let rruleset = RRuleSet::from_str(rruleset_str).unwrap();

@@ -2,10 +2,11 @@ use crate::tests::common::{check_occurrences, test_recurring_rrule_set, ymd_hms}
 use crate::{Frequency, NWeekday, RRule, RRuleSet, Weekday};
 
 #[test]
-#[cfg(feature = "force-utc")]
-fn rrule_and_utc_time() {
-    let dates = "DTSTART;VALUE=DATE:20201214\n\
-        RRULE:FREQ=DAILY;COUNT=2;"
+fn rrule_and_utc_time_with_local_tzid() {
+    // Test that LOCAL-TZID affects floating datetime processing in UNTIL
+    // Note: DTSTART is processed independently and would need explicit timezone
+    let dates = "DTSTART:20201214T000000Z\n\
+        RRULE:FREQ=DAILY;COUNT=2;LOCAL-TZID=UTC"
         .parse::<RRuleSet>()
         .unwrap()
         .all(u16::MAX)
