@@ -3,7 +3,7 @@ use super::utils::add_time_to_date;
 use super::{build_pos_list, utils::date_from_ordinal, IterInfo, MAX_ITER_LOOP};
 use crate::core::{get_hour, get_minute, get_second};
 use crate::{Frequency, RRule, Tz};
-use chrono::NaiveTime;
+use chrono::{Datelike, NaiveTime, TimeZone};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
@@ -95,10 +95,16 @@ impl RRuleIter {
 
             // Apply LOCAL-TZID conversion to output dates when appropriate
             let output_dt = if let Some(local_tzid) = rrule.local_tzid {
-                // Only apply LOCAL-TZID if the date is in a "local-like" timezone
-                // (not explicitly UTC and not explicitly set to another specific timezone)
-                // This applies LOCAL-TZID to floating datetimes and generated recurrences
-                if dt.timezone() != Tz::UTC && Self::should_apply_local_tzid(dt, dt_start) {
+                // Special handling for DATE values (all-day events)
+                // DATE values should always be at 00:00:00 in the LOCAL-TZID timezone
+                if Self::is_date_value(dt, dt_start) {
+                    // Create a new datetime at 00:00:00 in the LOCAL-TZID timezone
+                    local_tzid
+                        .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
+                        .single()
+                        .unwrap_or(dt.with_timezone(&local_tzid))
+                } else if dt.timezone() != Tz::UTC && Self::should_apply_local_tzid(dt, dt_start) {
+                    // For floating datetimes, convert from current timezone to LOCAL-TZID
                     dt.with_timezone(&local_tzid)
                 } else {
                     dt
@@ -236,6 +242,17 @@ impl RRuleIter {
 
         // Indicate that there might be more items on the next iteration.
         false
+    }
+
+    /// Determine if this datetime represents a DATE value (all-day event).
+    /// DATE values are always at 00:00:00 and should be treated specially with LOCAL-TZID.
+    fn is_date_value(dt: chrono::DateTime<Tz>, dt_start: &chrono::DateTime<Tz>) -> bool {
+        // A datetime is considered a DATE value if:
+        // 1. Both the datetime and DTSTART are at 00:00:00 (indicating DATE format)
+        // 2. They're in the same timezone (indicating it's a generated recurrence of the same type)
+        dt.time() == NaiveTime::from_hms_opt(0, 0, 0).unwrap()
+            && dt_start.time() == NaiveTime::from_hms_opt(0, 0, 0).unwrap()
+            && dt.timezone() == dt_start.timezone()
     }
 
     /// Determine if LOCAL-TZID should be applied to this datetime.

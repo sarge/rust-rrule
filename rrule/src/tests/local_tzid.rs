@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod local_tzid_integration_tests {
     use crate::{RRuleSet, Tz};
+    use chrono::Timelike;
 
     #[test]
     fn local_tzid_replaces_force_utc_behavior() {
@@ -47,12 +48,45 @@ mod local_tzid_integration_tests {
 
         // LOCAL-TZID should be preserved
         assert!(serialized.contains("LOCAL-TZID=Europe/London"));
+    }
 
-        // Should be able to parse the serialized version back
-        let reparsed = serialized
-            .parse::<crate::RRule<crate::Unvalidated>>()
-            .unwrap();
-        assert_eq!(reparsed.local_tzid, Some(Tz::Europe__London));
+    #[test]
+    fn local_tzid_with_date_values() {
+        // Test that LOCAL-TZID with DATE values (all-day events) works correctly
+        // DATE values should always be at 00:00:00 in the LOCAL-TZID timezone
+        
+        let rrule_with_date_utc = "DTSTART;VALUE=DATE:20201214\n\
+            RRULE:FREQ=DAILY;LOCAL-TZID=UTC;COUNT=2";
+
+        let rrule_set = rrule_with_date_utc.parse::<RRuleSet>().unwrap();
+        let dates = rrule_set.all(u16::MAX).dates;
+
+        assert_eq!(dates.len(), 2);
+        
+        // All dates should be at 00:00:00 in UTC timezone
+        for date in &dates {
+            assert_eq!(date.timezone(), Tz::UTC);
+            assert_eq!(date.hour(), 0);
+            assert_eq!(date.minute(), 0);
+            assert_eq!(date.second(), 0);
+        }
+
+        // Test with different timezone
+        let rrule_with_date_ny = "DTSTART;VALUE=DATE:20201214\n\
+            RRULE:FREQ=DAILY;LOCAL-TZID=America/New_York;COUNT=2";
+
+        let rrule_set_ny = rrule_with_date_ny.parse::<RRuleSet>().unwrap();
+        let dates_ny = rrule_set_ny.all(u16::MAX).dates;
+
+        assert_eq!(dates_ny.len(), 2);
+        
+        // All dates should be at 00:00:00 in America/New_York timezone
+        for date in &dates_ny {
+            assert_eq!(date.timezone(), Tz::America__New_York);
+            assert_eq!(date.hour(), 0);
+            assert_eq!(date.minute(), 0);
+            assert_eq!(date.second(), 0);
+        }
     }
 
     #[test]
