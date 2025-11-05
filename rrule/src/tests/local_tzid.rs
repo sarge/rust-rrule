@@ -77,30 +77,30 @@ mod local_tzid_integration_tests {
     #[test]
     fn local_tzid_affects_output_timezone() {
         // Test that LOCAL-TZID converts the output timezone of generated dates
-        
+
         // Test with floating DTSTART (no explicit timezone)
         let rrule_with_floating_start = "DTSTART:20120201T093000\n\
             RRULE:FREQ=DAILY;LOCAL-TZID=UTC;COUNT=2";
-        
+
         let rrule_set = rrule_with_floating_start.parse::<RRuleSet>().unwrap();
         let dates = rrule_set.all(u16::MAX).dates;
-        
+
         assert_eq!(dates.len(), 2);
-        
+
         // All dates should be in UTC timezone
         for date in &dates {
             assert_eq!(date.timezone(), Tz::UTC);
         }
-        
+
         // Compare with the same RRULE but without LOCAL-TZID (should be in local timezone)
         let rrule_without_local_tzid = "DTSTART:20120201T093000\n\
             RRULE:FREQ=DAILY;COUNT=2";
-        
+
         let rrule_set_local = rrule_without_local_tzid.parse::<RRuleSet>().unwrap();
         let dates_local = rrule_set_local.all(u16::MAX).dates;
-        
+
         assert_eq!(dates_local.len(), 2);
-        
+
         // These should be in the local timezone (not UTC)
         for date in &dates_local {
             assert_ne!(date.timezone(), Tz::UTC); // Should NOT be UTC

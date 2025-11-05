@@ -54,7 +54,9 @@ impl RRuleIter {
         if rrule.include_dtstart == Some(true) {
             let output_dt_start = if let Some(local_tzid) = rrule.local_tzid {
                 // Apply LOCAL-TZID to DTSTART if it's a floating datetime
-                if dt_start.timezone() != Tz::UTC && Self::should_apply_local_tzid(*dt_start, dt_start) {
+                if dt_start.timezone() != Tz::UTC
+                    && Self::should_apply_local_tzid(*dt_start, dt_start)
+                {
                     dt_start.with_timezone(&local_tzid)
                 } else {
                     *dt_start
