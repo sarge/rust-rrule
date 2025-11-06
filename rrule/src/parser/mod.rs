@@ -32,10 +32,33 @@ impl FromStr for Grammar {
             .map(ContentLineCaptures::new)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let start = content_lines_parts
-            .iter()
-            .find(|parts| matches!(parts.property_name, PropertyName::DtStart))
-            .map(StartDateContentLine::try_from)
+        // Process lines in order to find LOCAL-TZID before DTSTART
+        let mut local_tzid = None;
+        let mut dtstart_index = None;
+
+        for (i, parts) in content_lines_parts.iter().enumerate() {
+            match parts.property_name {
+                PropertyName::RRule | PropertyName::ExRule => {
+                    // Extract LOCAL-TZID from RRULE/EXRULE lines that appear before DTSTART
+                    if dtstart_index.is_none() && local_tzid.is_none() {
+                        if let Ok(rrule) = RRule::try_from(parts.clone()) {
+                            if let Some(tzid) = rrule.local_tzid {
+                                local_tzid = Some(tzid);
+                            }
+                        }
+                    }
+                }
+                PropertyName::DtStart => {
+                    dtstart_index = Some(i);
+                    break; // Stop processing once we find DTSTART
+                }
+                _ => {}
+            }
+        }
+
+        let start = dtstart_index
+            .and_then(|i| content_lines_parts.get(i))
+            .map(|parts| StartDateContentLine::try_from_with_local_tzid(parts, local_tzid))
             .transpose()?;
 
         let mut content_lines = vec![];

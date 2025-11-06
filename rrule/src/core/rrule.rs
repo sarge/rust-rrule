@@ -282,6 +282,10 @@ pub struct RRule<Stage = Validated> {
     /// When specified, floating datetimes will be interpreted in this timezone
     /// instead of the local timezone. Controlled via the LOCAL-TZID parameter.
     pub(crate) local_tzid: Option<Tz>,
+    /// Tracks whether the original DTSTART was a floating datetime.
+    /// This includes both DATE values and DATE-TIME values without timezone specification.
+    /// This is used to properly handle LOCAL-TZID conversion for floating datetimes.
+    pub(crate) dtstart_is_floating: bool,
     /// A phantom data to have the stage (unvalidated or validated).
     #[cfg_attr(feature = "serde", serde_as(as = "ignore"))]
     pub(crate) stage: PhantomData<Stage>,
@@ -309,6 +313,7 @@ impl Default for RRule<Unvalidated> {
             by_easter: None,
             include_dtstart: None,
             local_tzid: None,
+            dtstart_is_floating: false,
             stage: PhantomData,
         }
     }
@@ -616,6 +621,7 @@ impl RRule<Unvalidated> {
             by_easter: rrule.by_easter,
             include_dtstart: rrule.include_dtstart,
             local_tzid: rrule.local_tzid,
+            dtstart_is_floating: rrule.dtstart_is_floating,
             stage: PhantomData,
         })
     }

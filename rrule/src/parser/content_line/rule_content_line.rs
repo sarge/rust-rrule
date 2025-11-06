@@ -245,6 +245,7 @@ fn props_to_rrule(
         by_easter,
         include_dtstart,
         local_tzid,
+        dtstart_is_floating: false, // Default to false during parsing; will be set later in RRuleSet
         stage: PhantomData,
     })
 }

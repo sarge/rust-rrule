@@ -7,7 +7,7 @@ use super::{
 use crate::{
     core::Tz,
     parser::{
-        datetime::{datestring_to_date, parse_timezone},
+        datetime::{datestring_to_date_with_local_tzid, parse_timezone},
         ParseError,
     },
 };
@@ -21,10 +21,24 @@ pub(crate) struct StartDateContentLine {
     pub value: &'static str,
 }
 
-impl TryFrom<&ContentLineCaptures<'_>> for StartDateContentLine {
-    type Error = ParseError;
+impl StartDateContentLine {
+    /// Determines if this DTSTART represents a floating datetime.
+    /// A floating datetime is either a DATE value or a DATE-TIME without timezone specification.
+    pub(crate) fn is_floating(&self) -> bool {
+        // DATE values are always floating
+        if self.value == "DATE" {
+            return true;
+        }
+        
+        // DATE-TIME without explicit timezone (no TZID parameter and no Z suffix) is floating
+        self.value == "DATE-TIME" && self.timezone.is_none()
+    }
 
-    fn try_from(content_line: &ContentLineCaptures) -> Result<Self, Self::Error> {
+    /// Create a StartDateContentLine with optional LOCAL-TZID support
+    pub(crate) fn try_from_with_local_tzid(
+        content_line: &ContentLineCaptures,
+        local_tzid: Option<Tz>,
+    ) -> Result<Self, ParseError> {
         let parameters: HashMap<DateParameter, String> = content_line
             .parameters
             .as_ref()
@@ -56,13 +70,22 @@ impl TryFrom<&ContentLineCaptures<'_>> for StartDateContentLine {
             }
         }
 
-        let datetime = datestring_to_date(content_line.value, timezone, "DTSTART")?;
+        let datetime = datestring_to_date_with_local_tzid(content_line.value, timezone, "DTSTART", local_tzid)?;
 
         Ok(Self {
             datetime,
             timezone,
             value,
         })
+    }
+}
+
+impl TryFrom<&ContentLineCaptures<'_>> for StartDateContentLine {
+    type Error = ParseError;
+
+    fn try_from(content_line: &ContentLineCaptures) -> Result<Self, Self::Error> {
+        // Use the existing method with no LOCAL-TZID for backward compatibility
+        Self::try_from_with_local_tzid(content_line, None)
     }
 }
 

@@ -3,7 +3,7 @@ use super::utils::add_time_to_date;
 use super::{build_pos_list, utils::date_from_ordinal, IterInfo, MAX_ITER_LOOP};
 use crate::core::{get_hour, get_minute, get_second};
 use crate::{Frequency, RRule, Tz};
-use chrono::{Datelike, NaiveTime, TimeZone};
+use chrono::{Datelike, NaiveTime, TimeZone, Timelike};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
@@ -53,8 +53,15 @@ impl RRuleIter {
         // This ensures DTSTART is always first, regardless of recurrence pattern
         if rrule.include_dtstart == Some(true) {
             let output_dt_start = if let Some(local_tzid) = rrule.local_tzid {
-                // Apply LOCAL-TZID to DTSTART if it's a floating datetime
-                if dt_start.timezone() != Tz::UTC
+                // Apply LOCAL-TZID to DTSTART
+                if rrule.dtstart_is_floating {
+                    // For floating datetimes, create datetime in LOCAL-TZID timezone
+                    local_tzid
+                        .with_ymd_and_hms(dt_start.year(), dt_start.month(), dt_start.day(), 
+                                          dt_start.hour(), dt_start.minute(), dt_start.second())
+                        .single()
+                        .unwrap_or(dt_start.with_timezone(&local_tzid))
+                } else if dt_start.timezone() != Tz::UTC
                     && Self::should_apply_local_tzid(*dt_start, dt_start)
                 {
                     dt_start.with_timezone(&local_tzid)
@@ -95,12 +102,12 @@ impl RRuleIter {
 
             // Apply LOCAL-TZID conversion to output dates when appropriate
             let output_dt = if let Some(local_tzid) = rrule.local_tzid {
-                // Special handling for DATE values (all-day events)
-                // DATE values should always be at 00:00:00 in the LOCAL-TZID timezone
-                if Self::is_date_value(dt, dt_start) {
-                    // Create a new datetime at 00:00:00 in the LOCAL-TZID timezone
+                // Special handling for floating datetimes
+                // If DTSTART was originally floating, treat all generated times as being in LOCAL-TZID timezone
+                if rrule.dtstart_is_floating {
+                    // Create a new datetime with the same date and time but in the LOCAL-TZID timezone
                     local_tzid
-                        .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), 0, 0, 0)
+                        .with_ymd_and_hms(dt.year(), dt.month(), dt.day(), dt.hour(), dt.minute(), dt.second())
                         .single()
                         .unwrap_or(dt.with_timezone(&local_tzid))
                 } else if dt.timezone() != Tz::UTC && Self::should_apply_local_tzid(dt, dt_start) {
@@ -244,16 +251,7 @@ impl RRuleIter {
         false
     }
 
-    /// Determine if this datetime represents a DATE value (all-day event).
-    /// DATE values are always at 00:00:00 and should be treated specially with LOCAL-TZID.
-    fn is_date_value(dt: chrono::DateTime<Tz>, dt_start: &chrono::DateTime<Tz>) -> bool {
-        // A datetime is considered a DATE value if:
-        // 1. Both the datetime and DTSTART are at 00:00:00 (indicating DATE format)
-        // 2. They're in the same timezone (indicating it's a generated recurrence of the same type)
-        dt.time() == NaiveTime::from_hms_opt(0, 0, 0).unwrap()
-            && dt_start.time() == NaiveTime::from_hms_opt(0, 0, 0).unwrap()
-            && dt.timezone() == dt_start.timezone()
-    }
+
 
     /// Determine if LOCAL-TZID should be applied to this datetime.
     /// LOCAL-TZID should only affect floating datetimes (those originally parsed without explicit timezone).

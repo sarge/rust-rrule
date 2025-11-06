@@ -213,18 +213,25 @@ impl RRuleSet {
     }
 
     fn set_from_content_lines(self, content_lines: Vec<ContentLine>) -> Result<Self, RRuleError> {
+        self.set_from_content_lines_with_floating_flag(content_lines, false)
+    }
+
+    fn set_from_content_lines_with_floating_flag(self, content_lines: Vec<ContentLine>, dtstart_is_floating: bool) -> Result<Self, RRuleError> {
         let dt_start = self.dt_start;
 
         content_lines.into_iter().try_fold(
             self,
             |rrule_set, content_line| match content_line {
-                ContentLine::RRule(rrule) => rrule
-                    .validate(dt_start)
-                    .map(|rrule| rrule_set.rrule(rrule)),
+                ContentLine::RRule(mut rrule) => {
+                    rrule.dtstart_is_floating = dtstart_is_floating;
+                    rrule.validate(dt_start)
+                        .map(|rrule| rrule_set.rrule(rrule))
+                },
                 #[allow(unused_variables)]
-                ContentLine::ExRule(exrule) => {
+                ContentLine::ExRule(mut exrule) => {
                     #[cfg(feature = "exrule")]
                     {
+                        exrule.dtstart_is_floating = dtstart_is_floating;
                         exrule
                             .validate(dt_start)
                             .map(|exrule| rrule_set.exrule(exrule))
@@ -252,11 +259,14 @@ impl RRuleSet {
             content_lines,
         } = Grammar::from_str(s)?;
 
-        if let Some(dtstart) = start {
+        let dtstart_is_floating = if let Some(dtstart) = start {
             self.dt_start = dtstart.datetime;
-        }
+            dtstart.is_floating()
+        } else {
+            false
+        };
 
-        self.set_from_content_lines(content_lines)
+        self.set_from_content_lines_with_floating_flag(content_lines, dtstart_is_floating)
     }
 }
 
@@ -275,8 +285,9 @@ impl FromStr for RRuleSet {
         } = Grammar::from_str(s)?;
 
         let start = start.ok_or(ParseError::MissingStartDate)?;
+        let dtstart_is_floating = start.is_floating();
 
-        Self::new(start.datetime).set_from_content_lines(content_lines)
+        Self::new(start.datetime).set_from_content_lines_with_floating_flag(content_lines, dtstart_is_floating)
     }
 }
 
